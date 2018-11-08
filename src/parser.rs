@@ -122,7 +122,7 @@ mod convert {
 
         let lang = opening_line.trim_start_matches("```").trim();
 
-        if lang.len() == 0 {
+        if lang.is_empty() {
             Err(buf)
         } else {
             Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
@@ -163,7 +163,7 @@ mod convert {
             };
         }
 
-        if html.len() == 0 {
+        if html.is_empty() {
             Err(ParseError::EmptyText)
         } else {
             Ok(html)
