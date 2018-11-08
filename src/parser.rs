@@ -37,4 +37,13 @@ mod convert {
 
         Err(buf)
     }
+
+    pub fn quote(buf: String) -> Result<String, String> {
+        let mut chars = buf.chars().skip(2);
+
+        match text(&mut chars) {
+            Ok(html) => Ok(format!("<blockquote>{}</blockquote>", html)),
+            Err(_) => Err(buf),
+        }
+    }
 }
