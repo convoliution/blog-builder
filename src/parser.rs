@@ -117,7 +117,16 @@ mod convert {
     }
 
     pub fn code_block(buf: String) -> Result<String, String> {
+        let (opening_line, code_text) = buf.trim_end_matches(&['`', '\r', '\n'] as &[_])
+            .split_at(buf.find('\n').unwrap());
 
+        let lang = opening_line.trim_start_matches("```").trim();
+
+        if lang.len() == 0 {
+            Err(buf)
+        } else {
+            Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
+        }
     }
 
     pub fn paragraph(buf: String) -> Result<String, String> {
