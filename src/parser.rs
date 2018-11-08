@@ -74,4 +74,33 @@ mod convert {
             Err(_) => Err(buf),
         }
     }
+
+    pub fn image(buf: String) -> Result<String, String> {
+        let mut chars = buf.chars();
+
+        let mut alt_text = String::new();
+
+        while let Some(c) = chars.next() {
+            match c {
+                ']' => match chars.next() {
+                    Some('(') => {
+                        let mut src = String::new();
+
+                        while let Some(c) = chars.next() {
+                            match c {
+                                ')' => return Ok(format!("<img src=\"{}\" alt=\"{}\"/>", src, alt_text)),
+                                 _  => src.push(c),
+                            }
+                        }
+
+                        return Err(format!("[{}]({}", alt_text, src))
+                    },
+                    _ => return Err(format!("![{}]", alt_text)),
+                },
+                 _  => alt_text.push(c),
+            };
+        }
+
+        Err(format!("![{}", alt_text))
+    }
 }
