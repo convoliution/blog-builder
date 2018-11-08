@@ -103,4 +103,8 @@ mod convert {
 
         Err(format!("![{}", alt_text))
     }
+
+    pub fn code_block(buf: String) -> Result<String, String> {
+
+    }
 }
