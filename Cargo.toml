@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["Michael Liu <miliu@protonmail.com>"]
 
 [dependencies]
+chrono = "0.4.0"
+clap = "2.32.0"
+failure = "0.1.3"
