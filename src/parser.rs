@@ -46,4 +46,18 @@ mod convert {
             Err(_) => Err(buf),
         }
     }
+
+    // TODO: support nesting
+    pub fn unord_list(buf: String) -> Result<String, String> {
+        let lines: Result<Vec<String>, ParseError> = buf.lines()
+            .map(|line| line.chars().skip(2))
+            .map(|chars| text(&mut chars))
+            .collect();
+
+        match lines {
+            Ok(html) => Ok(format!("<ul>{}</ul>",
+                html.iter().fold("".to_string(), |acc, line| format!("{}<li>{}</li>", acc, line)))),
+            Err(_) => Err(buf),
+        }
+    }
 }
