@@ -161,4 +161,25 @@ mod convert {
 
         Err(format!("`{}", code_text))
     }
+
+    fn italic(chars: &mut Chars) -> Result<String, String> {
+        let mut html = String::new();
+
+        while let Some(c) = chars.next() {
+            match c {
+                '*' => html.push_str(match bold(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '[' => html.push_str(match link(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '_' => return Ok(format!("<i>{}</i>", html)),
+                 _  => html.push(c),
+            };
+        }
+
+        Err(format!("_{}", html))
+    }
 }
