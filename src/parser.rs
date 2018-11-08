@@ -148,4 +148,17 @@ mod convert {
             Ok(html)
         }
     }
+
+    fn code(chars: &mut Chars) -> Result<String, String> {
+        let mut code_text = String::new();
+
+        while let Some(c) = chars.next() {
+            match c {
+                '`' => return Ok(format!("<code>{}</code>", code_text)),
+                 _  => code_text.push(c),
+            };
+        }
+
+        Err(format!("`{}", code_text))
+    }
 }
