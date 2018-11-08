@@ -107,4 +107,13 @@ mod convert {
     pub fn code_block(buf: String) -> Result<String, String> {
 
     }
+
+    pub fn paragraph(buf: String) -> Result<String, String> {
+        let mut chars = buf.chars();
+
+        match text(&mut chars) {
+            Ok(html) => Ok(format!("<p>{}</p>", html)),
+            Err(_) => Err(buf),
+        }
+    }
 }
