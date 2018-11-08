@@ -203,4 +203,43 @@ mod convert {
 
         Err(format!("*{}", html))
     }
+
+    fn link(chars: &mut Chars) -> Result<String, String> {
+        let mut link_text = String::new();
+
+        while let Some(c) = chars.next() {
+            match c {
+                '`' => link_text.push_str(match code(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '_' => link_text.push_str(match italic(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '*' => link_text.push_str(match bold(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                ']' => match chars.next() {
+                    Some('(') => {
+                        let mut href = String::new();
+
+                        while let Some(c) = chars.next() {
+                            match c {
+                                ')' => return Ok(format!("<a href=\"{}\">{}</a>", href, link_text)),
+                                 _  => href.push(c),
+                            }
+                        }
+
+                        return Err(format!("[{}]({}", link_text, href))
+                    },
+                    _ => return Err(format!("[{}]", link_text)),
+                },
+                 _  => link_text.push(c),
+            };
+        }
+
+        Err(format!("[{}", link_text))
+    }
 }
