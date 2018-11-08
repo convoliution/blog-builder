@@ -182,4 +182,25 @@ mod convert {
 
         Err(format!("_{}", html))
     }
+
+    fn bold(chars: &mut Chars) -> Result<String, String> {
+        let mut html = String::new();
+
+        while let Some(c) = chars.next() {
+            match c {
+                '_' => html.push_str(match italic(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '[' => html.push_str(match link(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '*' => return Ok(format!("<b>{}</b>", html)),
+                 _  => html.push(c),
+            };
+        }
+
+        Err(format!("*{}", html))
+    }
 }
