@@ -116,4 +116,36 @@ mod convert {
             Err(_) => Err(buf),
         }
     }
+
+    fn text(chars: &mut Chars) -> Result<String, ParseError> {
+        let mut html = String::with_capacity(chars.as_str().len());
+
+        while let Some(c) = chars.next() {
+            match c {
+                '`' => html.push_str(match code(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '_' => html.push_str(match italic(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '*' => html.push_str(match bold(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                '[' => html.push_str(match link(&mut chars) {
+                    Ok(s) => &s,
+                    Err(s) => &s,
+                }),
+                 _  => html.push(c),
+            };
+        }
+
+        if html.len() == 0 {
+            Err(ParseError::EmptyText)
+        } else {
+            Ok(html)
+        }
+    }
 }
