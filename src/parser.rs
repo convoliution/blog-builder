@@ -88,7 +88,7 @@ mod convert {
     }
 
     pub fn image(buf: String) -> Result<String, String> {
-        let mut chars = buf.chars();
+        let mut chars = buf.chars().skip(1);
 
         let mut alt_text = String::new();
 
@@ -105,15 +105,15 @@ mod convert {
                             }
                         }
 
-                        return Err(format!("[{}]({}", alt_text, src))
+                        return Err(buf)
                     },
-                    _ => return Err(format!("![{}]", alt_text)),
+                    _ => return Err(buf),
                 },
                  _  => alt_text.push(c),
             };
         }
 
-        Err(format!("![{}", alt_text))
+        Err(buf)
     }
 
     pub fn code_block(buf: String) -> Result<String, String> {
