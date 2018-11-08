@@ -7,10 +7,13 @@ mod parser;
 
 use clap::{Arg, App};
 
-use std::fs::metadata;
+use std::fs::{metadata, File};
+use std::io::{Write, BufReader, BufRead};
 
 use chrono::offset::Local;
 use chrono::DateTime;
+
+use parser::{Parser, ParseError};
 
 fn main() {
     let args = App::new("Blog Builder")
@@ -42,7 +45,19 @@ fn main() {
             .into();
         let auth_date = format!("{}", datetime.format("%B %e, %Y"));
 
+        let md_file = File::open(md_filename)
+            .expect(&format!("failed to open {}", md_filename));
+        let post_html = parse_md(md_file);
+
+        // TODO: write post file
+
     } else if args.is_present("all") {
         //let file_names =
     }
+}
+
+fn parse_md(file: File) -> Result<String, ParseError> {
+    let md_parser = Parser::new(BufReader::new(file).lines());
+
+    // TODO: iterate through parser
 }
