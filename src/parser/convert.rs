@@ -15,7 +15,7 @@ pub fn heading(buf: String) -> Result<String, String> {
                         return Err(buf);
                     }
                 },
-                ' ' => return Ok(format!("<h{level}>{}</h{level}>", text(chars.collect::<String>()), level=level)),
+                ' ' => return Ok(format!("<h{level}>{}</h{level}>", text(chars.collect::<String>()).trim(), level=level)),
                  _  => return Err(buf),
             }
         }
@@ -30,7 +30,7 @@ pub fn quote(buf: String) -> Result<String, String> {
     } else {
         let mut chars = buf.chars().skip(2);
 
-        Ok(format!("<blockquote>{}</blockquote>", text(chars.collect::<String>())))
+        Ok(format!("<blockquote>{}</blockquote>", text(chars.collect::<String>()).trim()))
     }
 }
 
@@ -40,7 +40,7 @@ pub fn unord_list(buf: String) -> Result<String, String> {
     } else {
         let items_html: String = buf.lines()
             .map(|line| line.chars().skip(2))
-            .map(|chars| text(chars.collect::<String>()))
+            .map(|chars| text(chars.collect::<String>()).trim())
             .map(|item_html| format!("<li>{}</li>", item_html))
             .collect();
 
@@ -54,7 +54,7 @@ pub fn ord_list(buf: String) -> Result<String, String> {
     } else {
         let items_html: String = buf.lines()
             .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
-            .map(|chars| text(chars.collect::<String>()))
+            .map(|chars| text(chars.collect::<String>()).trim())
             .map(|item_html| format!("<li>{}</li>", item_html))
             .collect();
 
@@ -113,10 +113,19 @@ pub fn code_block(buf: String) -> Result<String, String> {
     }
 }
 
+pub fn paragraph(buf: String) -> Result<String, String> {
+    let md: String = buf.lines()
+        .map(|line| line.trim_end_matches('\n'))
+        .map(|line| line.trim_end_matches('\r'))
+        .collect();
+
+    Ok(format!("<p>{}</p>", text(md).trim()))
+}
+
 pub fn text(buf: String) -> String {
     let mut html = String::with_capacity(buf.len());
 
-    let mut chars = buf.chars();
+    let mut chars = buf.replace("<", "&lt;").replace(">", "&gt;").chars();
 
     while let Some(c) = chars.next() {
         match c {
@@ -148,7 +157,7 @@ fn code(chars: &mut Chars) -> Result<String, String> {
 
     while let Some(c) = chars.next() {
         match c {
-            '`' => return Ok(format!("<code>{}</code>", code_text)),
+            '`' => return Ok(format!("<code>{}</code>", code_text.replace("&lt;", "<").replace("&gt;", ">"))),
              _  => code_text.push(c),
         };
     }
