@@ -1,118 +1,122 @@
 use std::str::Chars;
 
 pub fn heading(buf: String) -> Result<String, String> {
-    let mut level = 0;
-    let mut chars = buf.chars();
+    if !buf.starts_with("#") {
+        Err(buf)
+    } else {
+        let mut level = 0;
+        let mut chars = buf.chars();
 
-    while let Some(c) = chars.next() {
-        match c {
-            '#' => {
-                level += 1;
-                if level > 6 {
-                    return Err(buf);
-                }
-            },
-            ' ' => {
-                match text(&mut chars) {
-                    Ok(html) => return Ok(format!("<h{level}>{}</h{level}>", html, level=level)),
-                    Err(_) => return Err(buf),
-                }
-            },
-             _  => return Err(buf),
+        while let Some(c) = chars.next() {
+            match c {
+                '#' => {
+                    level += 1;
+                    if level > 6 {
+                        return Err(buf);
+                    }
+                },
+                ' ' => return Ok(format!("<h{level}>{}</h{level}>", text(chars.collect::<String>()), level=level)),
+                 _  => return Err(buf),
+            }
         }
-    }
 
-    Err(buf)
+        Err(buf)
+    }
 }
 
 pub fn quote(buf: String) -> Result<String, String> {
-    let mut chars = buf.chars().skip(2);
+    if !buf.starts_with("> ") {
+        Err(buf)
+    } else {
+        let mut chars = buf.chars().skip(2);
 
-    match text(&mut chars) {
-        Ok(html) => Ok(format!("<blockquote>{}</blockquote>", html)),
-        Err(_) => Err(buf),
+        Ok(format!("<blockquote>{}</blockquote>", text(chars.collect::<String>())))
     }
 }
 
 pub fn unord_list(buf: String) -> Result<String, String> {
-    let lines: Result<Vec<String>, ParseError> = buf.lines()
-        .map(|line| line.chars().skip(2))
-        .map(|chars| text(&mut chars))
-        .collect();
+    if !buf.lines().all(|line| line.starts_with("- ")) {
+        Err(buf)
+    } else {
+        let items_html: String = buf.lines()
+            .map(|line| line.chars().skip(2))
+            .map(|chars| text(chars.collect::<String>()))
+            .map(|item_html| format!("<li>{}</li>", item_html))
+            .collect();
 
-    match lines {
-        Ok(html) => Ok(format!("<ul>{}</ul>",
-            html.iter().fold("".to_string(), |acc, line| format!("{}<li>{}</li>", acc, line)))),
-        Err(_) => Err(buf),
+        Ok(format!("<ul>{}</ul>", items_html))
     }
 }
 
 pub fn ord_list(buf: String) -> Result<String, String> {
-    let lines: Result<Vec<String>, ParseError> = buf.lines()
-        .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
-        .map(|chars| text(&mut chars))
-        .collect();
+    if !buf.lines().all(|line| line.starts_with("1. ")) {
+        Err(buf)
+    } else {
+        let items_html: String = buf.lines()
+            .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
+            .map(|chars| text(chars.collect::<String>()))
+            .map(|item_html| format!("<li>{}</li>", item_html))
+            .collect();
 
-    match lines {
-        Ok(html) => Ok(format!("<ol>{}</ol>",
-            html.iter().fold("".to_string(), |acc, line| format!("{}<li>{}</li>", acc, line)))),
-        Err(_) => Err(buf),
+        Ok(format!("<ul>{}</ul>", items_html))
     }
 }
 
 pub fn image(buf: String) -> Result<String, String> {
-    let mut chars = buf.chars().skip(1);
+    if !buf.starts_with("[") {
+        Err(buf)
+    } else {
+        let mut chars = buf.chars().skip(1);
 
-    let mut alt_text = String::new();
+        let mut alt_text = String::new();
 
-    while let Some(c) = chars.next() {
-        match c {
-            ']' => match chars.next() {
-                Some('(') => {
-                    let mut src = String::new();
+        while let Some(c) = chars.next() {
+            match c {
+                ']' => match chars.next() {
+                    Some('(') => {
+                        let mut src = String::new();
 
-                    while let Some(c) = chars.next() {
-                        match c {
-                            ')' => return Ok(format!("<img src=\"{}\" alt=\"{}\"/>", src, alt_text)),
-                             _  => src.push(c),
+                        while let Some(c) = chars.next() {
+                            match c {
+                                ')' => return Ok(format!("<img src=\"{}\" alt=\"{}\"/>", src, alt_text)),
+                                 _  => src.push(c),
+                            }
                         }
-                    }
 
-                    return Err(buf)
+                        return Err(buf)
+                    },
+                    _ => return Err(buf),
                 },
-                _ => return Err(buf),
-            },
-             _  => alt_text.push(c),
-        };
-    }
+                 _  => alt_text.push(c),
+            };
+        }
 
-    Err(buf)
+        Err(buf)
+    }
 }
 
 pub fn code_block(buf: String) -> Result<String, String> {
-    let (opening_line, code_text) = buf.trim_end_matches(&['`', '\r', '\n'] as &[_])
-        .split_at(buf.find('\n').unwrap());
-
-    let lang = opening_line.trim_start_matches("```").trim();
-
-    if lang.is_empty() {
-        Err(buf)
+    if !buf.starts_with("```") || !buf.trim_end().ends_with("```") {
+        return Err(buf)
     } else {
-        Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
+        let (opening_line, code_text) = buf.trim_end()
+            .trim_end_matches('`')
+            .split_at(buf.find('\n').unwrap());
+
+        let lang = opening_line.trim_start_matches("```").trim();
+
+        if lang.is_empty() {
+            Err(buf)
+        } else {
+            Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
+        }
     }
 }
 
-pub fn paragraph(buf: String) -> Result<String, String> {
+pub fn text(buf: String) -> String {
+    let mut html = String::with_capacity(buf.len());
+
     let mut chars = buf.chars();
-
-    match text(&mut chars) {
-        Ok(html) => Ok(format!("<p>{}</p>", html)),
-        Err(_) => Err(buf),
-    }
-}
-
-fn text(chars: &mut Chars) -> String {
-    let mut html = String::with_capacity(chars.as_str().len());
 
     while let Some(c) = chars.next() {
         match c {
