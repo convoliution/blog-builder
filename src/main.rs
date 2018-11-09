@@ -8,12 +8,12 @@ mod parser;
 use clap::{Arg, App};
 
 use std::fs::{metadata, File};
-use std::io::{Write, BufReader, BufRead};
+use std::io::{Error, BufReader, BufRead, Write};
 
 use chrono::offset::Local;
 use chrono::DateTime;
 
-use parser::{Parser, ParseError};
+use parser::Parser;
 
 fn main() {
     let args = App::new("Blog Builder")
@@ -56,7 +56,7 @@ fn main() {
     }
 }
 
-fn parse_md(file: File) -> Result<String, ParseError> {
+fn parse_md(file: File) -> Result<String, Error> {
     let md_parser = Parser::new(BufReader::new(file).lines());
 
     // TODO: iterate through parser

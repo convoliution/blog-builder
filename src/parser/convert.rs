@@ -1,6 +1,10 @@
 use std::str::Chars;
 
-use parser::ParseError;
+#[derive(Debug, Fail)]
+pub enum ParseError {
+    #[fail(display = "input string was empty")]
+    EmptyText,
+}
 
 pub fn heading(buf: String) -> Result<String, String> {
     let mut level = 0;
