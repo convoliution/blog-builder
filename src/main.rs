@@ -1,5 +1,3 @@
-#[macro_use] extern crate failure;
-
 extern crate chrono;
 extern crate clap;
 
@@ -56,7 +54,7 @@ fn main() {
     }
 }
 
-fn parse_md(file: File) -> Result<String, Error> {
+fn parse_md(file: File) {//}-> Result<String, Error> {
     let md_parser = Parser::new(BufReader::new(file).lines());
 
     // TODO: iterate through parser

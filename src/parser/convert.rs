@@ -1,11 +1,5 @@
 use std::str::Chars;
 
-#[derive(Debug, Fail)]
-pub enum ParseError {
-    #[fail(display = "input string was empty")]
-    EmptyText,
-}
-
 pub fn heading(buf: String) -> Result<String, String> {
     let mut level = 0;
     let mut chars = buf.chars();
@@ -40,7 +34,6 @@ pub fn quote(buf: String) -> Result<String, String> {
     }
 }
 
-// TODO: support nesting
 pub fn unord_list(buf: String) -> Result<String, String> {
     let lines: Result<Vec<String>, ParseError> = buf.lines()
         .map(|line| line.chars().skip(2))
@@ -54,7 +47,6 @@ pub fn unord_list(buf: String) -> Result<String, String> {
     }
 }
 
-// TODO: support nesting
 pub fn ord_list(buf: String) -> Result<String, String> {
     let lines: Result<Vec<String>, ParseError> = buf.lines()
         .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
@@ -119,7 +111,7 @@ pub fn paragraph(buf: String) -> Result<String, String> {
     }
 }
 
-fn text(chars: &mut Chars) -> Result<String, ParseError> {
+fn text(chars: &mut Chars) -> String {
     let mut html = String::with_capacity(chars.as_str().len());
 
     while let Some(c) = chars.next() {
@@ -144,11 +136,7 @@ fn text(chars: &mut Chars) -> Result<String, ParseError> {
         };
     }
 
-    if html.is_empty() {
-        Err(ParseError::EmptyText)
-    } else {
-        Ok(html)
-    }
+    html
 }
 
 fn code(chars: &mut Chars) -> Result<String, String> {
