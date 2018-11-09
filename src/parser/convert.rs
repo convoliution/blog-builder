@@ -1,5 +1,51 @@
 use std::str::Chars;
 
+pub fn unord_list(buf: String) -> Result<String, String> {
+    if !buf.lines().all(|line| line.starts_with("- ")) {
+        Err(buf)
+    } else {
+        let items_html: String = buf.lines()
+            .map(|line| line.chars().skip(2))
+            .map(|chars| text(chars.collect::<String>()).trim())
+            .map(|item_html| format!("<li>{}</li>", item_html))
+            .collect();
+
+        Ok(format!("<ul>{}</ul>", items_html))
+    }
+}
+
+pub fn ord_list(buf: String) -> Result<String, String> {
+    if !buf.lines().all(|line| line.starts_with("1. ")) {
+        Err(buf)
+    } else {
+        let items_html: String = buf.lines()
+            .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
+            .map(|chars| text(chars.collect::<String>()).trim())
+            .map(|item_html| format!("<li>{}</li>", item_html))
+            .collect();
+
+        Ok(format!("<ul>{}</ul>", items_html))
+    }
+}
+
+pub fn code_block(buf: String) -> Result<String, String> {
+    if !buf.starts_with("```") || !buf.trim_end().ends_with("```") {
+        return Err(buf)
+    } else {
+        let (opening_line, code_text) = buf.trim_end()
+            .trim_end_matches('`')
+            .split_at(buf.find('\n').unwrap());
+
+        let lang = opening_line.trim_start_matches("```").trim();
+
+        if lang.is_empty() {
+            Err(buf)
+        } else {
+            Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
+        }
+    }
+}
+
 pub fn heading(buf: String) -> Result<String, String> {
     if !buf.starts_with("#") {
         Err(buf)
@@ -34,34 +80,6 @@ pub fn quote(buf: String) -> Result<String, String> {
     }
 }
 
-pub fn unord_list(buf: String) -> Result<String, String> {
-    if !buf.lines().all(|line| line.starts_with("- ")) {
-        Err(buf)
-    } else {
-        let items_html: String = buf.lines()
-            .map(|line| line.chars().skip(2))
-            .map(|chars| text(chars.collect::<String>()).trim())
-            .map(|item_html| format!("<li>{}</li>", item_html))
-            .collect();
-
-        Ok(format!("<ul>{}</ul>", items_html))
-    }
-}
-
-pub fn ord_list(buf: String) -> Result<String, String> {
-    if !buf.lines().all(|line| line.starts_with("1. ")) {
-        Err(buf)
-    } else {
-        let items_html: String = buf.lines()
-            .map(|line| line.chars().skip_while(|c| c.is_digit(10)).skip(2))
-            .map(|chars| text(chars.collect::<String>()).trim())
-            .map(|item_html| format!("<li>{}</li>", item_html))
-            .collect();
-
-        Ok(format!("<ul>{}</ul>", items_html))
-    }
-}
-
 pub fn image(buf: String) -> Result<String, String> {
     if !buf.starts_with("[") {
         Err(buf)
@@ -92,24 +110,6 @@ pub fn image(buf: String) -> Result<String, String> {
         }
 
         Err(buf)
-    }
-}
-
-pub fn code_block(buf: String) -> Result<String, String> {
-    if !buf.starts_with("```") || !buf.trim_end().ends_with("```") {
-        return Err(buf)
-    } else {
-        let (opening_line, code_text) = buf.trim_end()
-            .trim_end_matches('`')
-            .split_at(buf.find('\n').unwrap());
-
-        let lang = opening_line.trim_start_matches("```").trim();
-
-        if lang.is_empty() {
-            Err(buf)
-        } else {
-            Ok(format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code_text))
-        }
     }
 }
 
