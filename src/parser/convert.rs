@@ -1,5 +1,57 @@
 use std::str::Chars;
 
+pub fn is_unord_list_item(buf: String) -> bool {
+    buf.starts_with("- ")
+}
+
+pub fn is_ord_list_item(buf: String) -> bool {
+    buf.starts_with("1. ")
+}
+
+pub fn is_heading(buf: String) -> bool {
+    let mut chars = buf.chars();
+
+    let mut num_hashes = 0;
+    while let Some(c) = chars.next() {
+        match c {
+            '#' => {
+                num_hashes += 1;
+                if num_hashes > 6 {
+                    return false;
+                }
+            },
+            ' ' => return true,
+             _  => return false,
+        }
+    }
+
+    false
+}
+
+pub fn is_quote(buf: String) -> bool {
+    buf.starts_with("> ")
+}
+
+pub fn is_image(buf: String) -> bool {
+    let mut chars = buf.chars();
+
+    if let Some('[') = chars.next() {
+        let mut chars = chars.skip_while(|c| *c != ']').skip(1);
+
+        if let Some('(') = chars.next() {
+            let mut chars = chars.skip_while(|c| *c != ')');
+
+            if let Some(')') = chars.next() {
+                if chars.collect::<String>().trim().is_empty() {
+                    return true
+                }
+            }
+        }
+    }
+
+    false
+}
+
 pub fn unord_list(buf: String) -> Result<String, String> {
     if !buf.lines().all(|line| line.starts_with("- ")) {
         Err(buf)
@@ -96,7 +148,11 @@ pub fn image(buf: String) -> Result<String, String> {
 
                         while let Some(c) = chars.next() {
                             match c {
-                                ')' => return Ok(format!("<img src=\"{}\" alt=\"{}\"/>", src, alt_text)),
+                                ')' => if chars.collect::<String>().trim().is_empty() {
+                                    return Ok(format!("<img src=\"{}\" alt=\"{}\"/>", src, alt_text))
+                                } else {
+                                    return Err(buf)
+                                },
                                  _  => src.push(c),
                             }
                         }
