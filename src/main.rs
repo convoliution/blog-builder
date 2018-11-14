@@ -6,7 +6,7 @@ mod parser;
 use clap::{Arg, App};
 
 use std::fs::{metadata, File};
-use std::io::{Error, BufReader, BufRead, Write};
+use std::io::{Error, Read, Write};
 
 use chrono::offset::Local;
 use chrono::DateTime;
@@ -54,8 +54,13 @@ fn main() {
     }
 }
 
-fn parse_md(file: File) {//}-> Result<String, Error> {
-    let md_parser = Parser::new(BufReader::new(file).lines());
+fn parse_md(file: File) -> Result<String, Error> {
+    let mut md = String::new();
+    file.read_to_string(&mut md)?;
+
+    let md_parser = Parser::new(md);
 
     // TODO: iterate through parser
+
+    Ok(String::new())  // TODO: replace this
 }
