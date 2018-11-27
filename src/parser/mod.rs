@@ -1,73 +1,207 @@
 mod convert;
 
-use std::io::Error;
+use std::str::Lines;
 
 enum State {
     UnordList,
     OrdList,
-    CodeBlock(String),
+    CodeBlock,
+    Heading,
+    Quote,
+    Image,
     Paragraph,
 }
 
 impl State {
-    fn start_tag(&self) -> String {
+    fn parse<'a>(&self, md: &'a str) -> Result<String, &'a str> {
         match self {
-            State::UnordList       => "<ul>".to_string(),
-            State::OrdList         => "<ol>".to_string(),
-            State::CodeBlock(lang) => format!("<pre><code class=\"language-{}\">", lang),
-            State::Paragraph       => "<p>".to_string(),
-        }
-    }
-
-    fn end_tag(&self) -> String {
-        match self {
-            State::UnordList    => "</ul>".to_string(),
-            State::OrdList      => "</ol>".to_string(),
-            State::CodeBlock(_) => "</code></pre>".to_string(),
-            State::Paragraph    => "</p>".to_string(),
+            State::UnordList => convert::unord_list(md),
+            State::OrdList   => convert::ord_list(md),
+            State::CodeBlock => convert::code_block(md),
+            State::Heading   => convert::heading(md),
+            State::Quote     => convert::quote(md),
+            State::Image     => convert::image(md),
+            State::Paragraph => convert::paragraph(md),
         }
     }
 }
 
-pub struct Parser<I: Iterator<Item=Result<String, Error>>> {
-    lines: I,
-    buf: String,
+pub struct Parser<'a> {
+    lines: Lines<'a>,
+    buf: String,  // buffer stores markdown
     state: Option<State>,
 }
 
-impl<I> Parser<I> where I: Iterator<Item=Result<String, Error>> {
-    pub fn new(lines: I) -> Parser<I> {
+impl<'a> Parser<'a> {
+    pub fn new(md_lines: Lines<'a>) -> Parser<'a> {
         Parser {
-            lines,
+            lines: md_lines,
             buf: String::with_capacity(80),
             state: None,
         }
     }
 
-    fn change_state(mut self, new_state: Option<State>) -> Option<String> {
-        let flush: Option<String>;
-
-        if let Some(state) = self.state {
-            self.buf.push_str(&state.end_tag());
-        }
-
-        if self.buf.is_empty() {
-            flush = None;
+    fn flush(mut self, new_state: Option<State>) -> Option<String> {
+        let html = if self.buf.is_empty() {
+            None
         } else {
-            flush = Some(self.buf);
-        }
+            match self.state {
+                Some(state) => Some(state.parse(self.buf.as_str())),
+                None => None,
+            }
+        };
 
-        match new_state {
-            Some(state) => {
-                self.buf = state.start_tag();
-                self.state = Some(state);
-            },
-            None => {
-                self.buf = String::with_capacity(80);
-                self.state = None;
-            },
-        }
+        self.buf = String::with_capacity(80);
+        self.state = new_state;
 
-        return flush;
+        return html;
+    }
+}
+
+impl<'a> Iterator for Parser<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.lines.next() {
+                Some(line) => {
+                    match self.state {
+                        Some(State::CodeBlock) => {
+                            if line.starts_with("```") {
+                                return self.flush(None);
+                            } else {
+                                self.buf.push_str(line);
+                            }
+                        },
+                        _ => {
+                            if line.starts_with("- ") {  // TODO: support nesting
+                                if convert::is_unord_list_item(line) {
+                                    match self.state {
+                                        Some(State::UnordList) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::UnordList));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        }
+                                    }
+                                } else {
+                                    match self.state {
+                                        Some(State::Paragraph) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Paragraph));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        },
+                                    }
+                                }
+                            } else if line.starts_with("1. ") {  // TODO: support nesting
+                                if convert::is_ord_list_item(line) {
+                                    match self.state {
+                                        Some(State::OrdList) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::OrdList));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        }
+                                    }
+                                } else {
+                                    match self.state {
+                                        Some(State::Paragraph) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Paragraph));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        },
+                                    }
+                                }
+                            } else if line.starts_with("```") {
+
+                            } else if line.starts_with('#') {
+                                if convert::is_heading(line) {
+                                    match self.state {
+                                        Some(State::Heading) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Heading));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        }
+                                    }
+                                } else {
+                                    match self.state {
+                                        Some(State::Paragraph) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Paragraph));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        },
+                                    }
+                                }
+                            } else if line.starts_with("> ") {
+                                if convert::is_quote(line) {
+                                    match self.state {
+                                        Some(State::Quote) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Quote));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        }
+                                    }
+                                } else {
+                                    match self.state {
+                                        Some(State::Paragraph) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Paragraph));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        },
+                                    }
+                                }
+                            } else if line.starts_with('!') {
+                                if convert::is_image(line) {
+                                    match self.state {
+                                        Some(State::Image) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Image));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        }
+                                    }
+                                } else {
+                                    match self.state {
+                                        Some(State::Paragraph) => self.buf.push_str(line),
+                                        _ => {
+                                            let item = self.flush(Some(State::Paragraph));
+                                            self.buf.push_str(line);
+                                            return item;
+                                        },
+                                    }
+                                }
+                            } else if line.is_empty() {
+                                if let Some(State::Paragraph) = self.state {
+                                    return self.flush(Some(State::Paragraph));
+                                }
+                            } else {
+                                match self.state {
+                                    Some(State::Paragraph) => self.buf.push_str(line),
+                                    _ => {
+                                        let item = self.flush(Some(State::Paragraph));
+                                        self.buf.push_str(line);
+                                        return item;
+                                    },
+                                }
+                            }
+                        }
+                    }
+                },
+                None => {
+                    if let Some(State::CodeBlock) = self.state {
+                        // we hit EOF while looking for end of code block, so we have to rewind
+                        self.lines = self.buf.lines();
+                    } else {
+                        return self.flush(None);
+                    }
+                },
+            }
+        }
     }
 }

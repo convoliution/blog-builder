@@ -58,7 +58,7 @@ fn parse_md(file: File) -> Result<String, Error> {
     let mut md = String::new();
     file.read_to_string(&mut md)?;
 
-    let md_parser = Parser::new(md);
+    let md_parser = Parser::new(md.lines());
 
     // TODO: iterate through parser
 
