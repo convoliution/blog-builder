@@ -58,6 +58,32 @@ impl<'a> Parser<'a> {
     }
 }
 
+macro_rules! push {
+    ($self:ident, $line:ident, $check_fn:ident, $state:ident) => {
+        {
+            if convert::$check_fn($line) {
+                match $self.state {
+                    Some(State::$state) => $self.buf.push_str($line),
+                    _ => {
+                        let item = $self.flush(Some(State::$state));
+                        $self.buf.push_str($line);
+                        return item;
+                    }
+                }
+            } else {
+                match $self.state {
+                    Some(State::Paragraph) => $self.buf.push_str($line),
+                    _ => {
+                        let item = $self.flush(Some(State::Paragraph));
+                        $self.buf.push_str($line);
+                        return item;
+                    },
+                }
+            }
+        }
+    }
+}
+
 impl<'a> Iterator for Parser<'a> {
     type Item = String;
 
@@ -75,107 +101,17 @@ impl<'a> Iterator for Parser<'a> {
                         },
                         _ => {
                             if line.starts_with("- ") {  // TODO: support nesting
-                                if convert::is_unord_list_item(line) {
-                                    match self.state {
-                                        Some(State::UnordList) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::UnordList));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        }
-                                    }
-                                } else {
-                                    match self.state {
-                                        Some(State::Paragraph) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Paragraph));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        },
-                                    }
-                                }
+                                push!(self, line, is_unord_list_item, UnordList);
                             } else if line.starts_with("1. ") {  // TODO: support nesting
-                                if convert::is_ord_list_item(line) {
-                                    match self.state {
-                                        Some(State::OrdList) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::OrdList));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        }
-                                    }
-                                } else {
-                                    match self.state {
-                                        Some(State::Paragraph) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Paragraph));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        },
-                                    }
-                                }
+                                push!(self, line, is_ord_list_item, OrdList);
                             } else if line.starts_with("```") {
 
                             } else if line.starts_with('#') {
-                                if convert::is_heading(line) {
-                                    match self.state {
-                                        Some(State::Heading) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Heading));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        }
-                                    }
-                                } else {
-                                    match self.state {
-                                        Some(State::Paragraph) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Paragraph));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        },
-                                    }
-                                }
+                                push!(self, line, is_heading, Heading);
                             } else if line.starts_with("> ") {
-                                if convert::is_quote(line) {
-                                    match self.state {
-                                        Some(State::Quote) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Quote));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        }
-                                    }
-                                } else {
-                                    match self.state {
-                                        Some(State::Paragraph) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Paragraph));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        },
-                                    }
-                                }
+                                push!(self, line, is_quote, Quote);
                             } else if line.starts_with('!') {
-                                if convert::is_image(line) {
-                                    match self.state {
-                                        Some(State::Image) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Image));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        }
-                                    }
-                                } else {
-                                    match self.state {
-                                        Some(State::Paragraph) => self.buf.push_str(line),
-                                        _ => {
-                                            let item = self.flush(Some(State::Paragraph));
-                                            self.buf.push_str(line);
-                                            return item;
-                                        },
-                                    }
-                                }
+                                push!(self, line, is_image, Image);
                             } else if line.is_empty() {
                                 if let Some(State::Paragraph) = self.state {
                                     return self.flush(Some(State::Paragraph));
