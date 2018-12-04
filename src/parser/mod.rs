@@ -59,10 +59,10 @@ impl<'a> Parser<'a> {
 }
 
 macro_rules! flush {
-    ($self:ident, $line:ident, $state:ident) => {
+    ($parser:ident, $line:ident, $state:ident) => {
         {
-            let item = $self.flush(Some(State::$state));
-            $self.buf.push_str($line);
+            let item = $parser.flush(Some(State::$state));
+            $parser.buf.push_str($line);
             if item.is_some() {
                 return item;
             }
@@ -71,20 +71,20 @@ macro_rules! flush {
 }
 
 macro_rules! push {
-    ($self:ident, $line:ident, $state:ident, $check_fn:ident) => {
+    ($parser:ident, $line:ident, $state:ident, $check_fn:ident) => {
         {
             if convert::$check_fn($line) {
-                match $self.state {
-                    Some(State::$state) => $self.buf.push_str($line),
+                match $parser.state {
+                    Some(State::$state) => $parser.buf.push_str($line),
                     _ => {
-                        flush!($self, $line, $state);
+                        flush!($parser, $line, $state);
                     }
                 }
             } else {
-                match $self.state {
-                    Some(State::Paragraph) => $self.buf.push_str($line),
+                match $parser.state {
+                    Some(State::Paragraph) => $parser.buf.push_str($line),
                     _ => {
-                        flush!($self, $line, Paragraph);
+                        flush!($parser, $line, Paragraph);
                     }
                 }
             }
