@@ -58,31 +58,30 @@ impl<'a> Parser<'a> {
     }
 }
 
-macro_rules! push {
-    ($self:ident, $line:ident, $check_fn:ident, $state:ident) => {
+macro_rules! flush {
+    ($self:ident, $line:ident, $state:ident) => {
         {
-            if convert::$check_fn($line) {
-                match $self.state {
-                    Some(State::$state) => $self.buf.push_str($line),
-                    _ => {
-                        let item = $self.flush(Some(State::$state));
-                        $self.buf.push_str($line);
-                        if item.is_some() {
-                            return item;
-                        }
+            match $self.state {
+                Some(State::$state) => $self.buf.push_str($line),
+                _ => {
+                    let item = $self.flush(Some(State::$state));
+                    $self.buf.push_str($line);
+                    if item.is_some() {
+                        return item;
                     }
                 }
+            }
+        }
+    }
+}
+
+macro_rules! push {
+    ($self:ident, $line:ident, $state:ident, $check_fn:ident) => {
+        {
+            if convert::$check_fn($line) {
+                flush!($self, $line, $state);
             } else {
-                match $self.state {
-                    Some(State::Paragraph) => $self.buf.push_str($line),
-                    _ => {
-                        let item = $self.flush(Some(State::Paragraph));
-                        $self.buf.push_str($line);
-                        if item.is_some() {
-                            return item;
-                        }
-                    },
-                }
+                flush!($self, $line, Paragraph);
             }
         }
     }
@@ -105,17 +104,17 @@ impl<'a> Iterator for Parser<'a> {
                         },
                         _ => {
                             if line.starts_with("- ") {  // TODO: support nesting
-                                push!(self, line, is_unord_list_item, UnordList);
+                                push!(self, line, UnordList, is_unord_list_item);
                             } else if line.starts_with("1. ") {  // TODO: support nesting
-                                push!(self, line, is_ord_list_item, OrdList);
+                                push!(self, line, OrdList, is_ord_list_item);
                             } else if line.starts_with("```") {
 
                             } else if line.starts_with('#') {
-                                push!(self, line, is_heading, Heading);
+                                push!(self, line, Heading, is_heading);
                             } else if line.starts_with("> ") {
-                                push!(self, line, is_quote, Quote);
+                                push!(self, line, Quote, is_quote);
                             } else if line.starts_with('!') {
-                                push!(self, line, is_image, Image);
+                                push!(self, line, Image, is_image);
                             } else if line.is_empty() {
                                 if let Some(State::Paragraph) = self.state {
                                     return self.flush(Some(State::Paragraph));
