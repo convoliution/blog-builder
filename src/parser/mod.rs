@@ -42,14 +42,15 @@ impl<'a> Parser<'a> {
     }
 
     fn flush(mut self, new_state: Option<State>) -> Option<String> {
-        let html = if self.buf.is_empty() {
-            None
+        let html = if !self.buf.is_empty() && self.state.is_some() {
+            Some(
+                self.state
+                .unwrap()
+                .parse(self.buf.as_str())
+                .expect("Markdown should have been validated on push to buf")
+            )
         } else {
-            match self.state {
-                Some(state) => Some(state.parse(self.buf.as_str())
-                    .expect("Markdown should have been validated on push to buf")),
-                None => None,
-            }
+            None
         };
 
         self.buf = String::with_capacity(80);
