@@ -58,7 +58,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-macro_rules! flush {
+macro_rules! handle_item {
     ($parser:ident, $line:ident, $state:ident) => {
         {
             let item = $parser.flush(Some(State::$state));
@@ -70,23 +70,26 @@ macro_rules! flush {
     }
 }
 
-macro_rules! push {
+macro_rules! handle_state {
+    ($parser:ident, $line:ident, $state:ident) => {
+        {
+            match $parser.state {
+                Some(State::$state) => $parser.buf.push_str($line),
+                _ => {
+                    handle_item!($parser, $line, $state);
+                }
+            }
+        }
+    }
+}
+
+macro_rules! handle_line {
     ($parser:ident, $line:ident, $state:ident, $check_fn:ident) => {
         {
             if convert::$check_fn($line) {
-                match $parser.state {
-                    Some(State::$state) => $parser.buf.push_str($line),
-                    _ => {
-                        flush!($parser, $line, $state);
-                    }
-                }
+                handle_state!($parser, $line, $state);
             } else {
-                match $parser.state {
-                    Some(State::Paragraph) => $parser.buf.push_str($line),
-                    _ => {
-                        flush!($parser, $line, Paragraph);
-                    }
-                }
+                handle_state!($parser, $line, Paragraph);
             }
         }
     }
@@ -109,30 +112,23 @@ impl<'a> Iterator for Parser<'a> {
                         },
                         _ => {
                             if line.starts_with("- ") {  // TODO: support nesting
-                                push!(self, line, UnordList, is_unord_list_item);
+                                handle_line!(self, line, UnordList, is_unord_list_item);
                             } else if line.starts_with("1. ") {  // TODO: support nesting
-                                push!(self, line, OrdList, is_ord_list_item);
+                                handle_line!(self, line, OrdList, is_ord_list_item);
                             } else if line.starts_with("```") {
-                                flush!(self, line, CodeBlock);
+                                handle_item!(self, line, CodeBlock);
                             } else if line.starts_with('#') {
-                                push!(self, line, Heading, is_heading);
+                                handle_line!(self, line, Heading, is_heading);
                             } else if line.starts_with("> ") {
-                                push!(self, line, Quote, is_quote);
+                                handle_line!(self, line, Quote, is_quote);
                             } else if line.starts_with('!') {
-                                push!(self, line, Image, is_image);
+                                handle_line!(self, line, Image, is_image);
                             } else if line.is_empty() {
                                 if let Some(State::Paragraph) = self.state {
                                     return self.flush(Some(State::Paragraph));
                                 }
                             } else {
-                                match self.state {
-                                    Some(State::Paragraph) => self.buf.push_str(line),
-                                    _ => {
-                                        let item = self.flush(Some(State::Paragraph));
-                                        self.buf.push_str(line);
-                                        return item;
-                                    },
-                                }
+                                handle_state!(self, line, Paragraph);
                             }
                         }
                     }
