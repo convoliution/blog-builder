@@ -46,7 +46,8 @@ impl<'a> Parser<'a> {
             None
         } else {
             match self.state {
-                Some(state) => Some(state.parse(self.buf.as_str())),
+                Some(state) => Some(state.parse(self.buf.as_str())
+                    .expect("Markdown should have been validated on push to buf")),
                 None => None,
             }
         };
