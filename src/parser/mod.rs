@@ -61,15 +61,10 @@ impl<'a> Parser<'a> {
 macro_rules! flush {
     ($self:ident, $line:ident, $state:ident) => {
         {
-            match $self.state {
-                Some(State::$state) => $self.buf.push_str($line),
-                _ => {
-                    let item = $self.flush(Some(State::$state));
-                    $self.buf.push_str($line);
-                    if item.is_some() {
-                        return item;
-                    }
-                }
+            let item = $self.flush(Some(State::$state));
+            $self.buf.push_str($line);
+            if item.is_some() {
+                return item;
             }
         }
     }
@@ -79,9 +74,19 @@ macro_rules! push {
     ($self:ident, $line:ident, $state:ident, $check_fn:ident) => {
         {
             if convert::$check_fn($line) {
-                flush!($self, $line, $state);
+                match $self.state {
+                    Some(State::$state) => $self.buf.push_str($line),
+                    _ => {
+                        flush!($self, $line, $state);
+                    }
+                }
             } else {
-                flush!($self, $line, Paragraph);
+                match $self.state {
+                    Some(State::Paragraph) => $self.buf.push_str($line),
+                    _ => {
+                        flush!($self, $line, Paragraph);
+                    }
+                }
             }
         }
     }
@@ -108,7 +113,7 @@ impl<'a> Iterator for Parser<'a> {
                             } else if line.starts_with("1. ") {  // TODO: support nesting
                                 push!(self, line, OrdList, is_ord_list_item);
                             } else if line.starts_with("```") {
-
+                                flush!(self, line, CodeBlock);
                             } else if line.starts_with('#') {
                                 push!(self, line, Heading, is_heading);
                             } else if line.starts_with("> ") {
