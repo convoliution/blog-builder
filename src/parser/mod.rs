@@ -67,7 +67,9 @@ macro_rules! push {
                     _ => {
                         let item = $self.flush(Some(State::$state));
                         $self.buf.push_str($line);
-                        return item;
+                        if item.is_some() {
+                            return item;
+                        }
                     }
                 }
             } else {
@@ -76,7 +78,9 @@ macro_rules! push {
                     _ => {
                         let item = $self.flush(Some(State::Paragraph));
                         $self.buf.push_str($line);
-                        return item;
+                        if item.is_some() {
+                            return item;
+                        }
                     },
                 }
             }
